@@ -1,78 +1,123 @@
-// src/pages/MyEvents.tsx
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom"; // Import Link to create navigation links
-import PageLayout from "../components/PageLayout"; // Layout wrapper component
-import EventCard from "../components/EventCard"; // Card component to display each event
-import { getEvents, deleteEvent, EventType } from "../services/api"; // API functions and types
+import React, { useState, useEffect } from "react";
+import EventForm, { EventType } from "../components/EventForm";
 
-export default function MyEvents() {
-  // State to store the list of events fetched from API
+const MyEvents: React.FC = () => {
   const [events, setEvents] = useState<EventType[]>([]);
-  // State to track loading status for showing a loading message
-  const [loading, setLoading] = useState(true);
-  // State to track errors and show error messages
-  const [error, setError] = useState<string | null>(null);
-
-  // useEffect runs once after component mounts to fetch events from API
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true); // Set loading state true before API call
-        const res = await getEvents(); // Fetch events from MockAPI
-        setEvents(res.data); // Store events data in state
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load events."); // Show error message if fetch fails
-      } finally {
-        setLoading(false); // Stop loading spinner/message
-      }
-    }
-    load();
-  }, []);
-
-  // Function to handle event deletion
-  const handleDelete = async (id: string) => {
+  const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+  const [showForm, setShowForm] = useState(false);
+console.log(events)
+  // Fetch events from API
+  const fetchEvents = async () => {
     try {
-      await deleteEvent(id); // Call API to delete event
-      setEvents((prev) => prev.filter((e) => e.id !== id)); // Remove deleted event locally
-    } catch (err) {
-      console.error(err);
-      setError("Failed to delete event."); // Show error message on failure
+      const res = await fetch("http://localhost:3001/events");
+      const data = await res.json();
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
     }
   };
 
-  // Show loading message while fetching data
-  if (loading) return <PageLayout><p>Loading events…</p></PageLayout>;
-  // Show error message if API call or delete failed
-  if (error) return <PageLayout><p>{error}</p></PageLayout>;
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const handleAddEvent = async (newEvent: EventType | null) => {
+    try {
+      await fetch("http://localhost:3001/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEvent),
+      });
+      await fetchEvents();
+      setShowForm(false);
+    } catch (error) {
+      console.error("Error adding event:", error);
+    }
+  };
+
+  const handleUpdateEvent = async (updatedEvent: EventType | null) => {
+    if (!editingEvent?.id) return;
+    try {
+      await fetch(`http://localhost:3001/events/${editingEvent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedEvent),
+      });
+      await fetchEvents();
+      setEditingEvent(null);
+      setShowForm(false);
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
+
+  const handleDeleteEvent = async (id: number) => {
+    try {
+      await fetch(`http://localhost:3001/events/${id}`, { method: "DELETE" });
+      await fetchEvents();
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
 
   return (
-    <PageLayout>
-      {/* Header and Add Event button container */}
-      <div className="flex justify-between items-center mb-4">
-        {/* Page title */}
-        <h1 className="text-2xl font-semibold">My Events</h1>
-        {/* Link styled as a button that navigates to "/add" for creating new events */}
-        <Link
-          to="/add"
-          className="btn btn-primary px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-        >
-          + Add Event
-        </Link>
-      </div>
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">My Events</h1>
 
-      {/* Grid container for EventCards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-        {/* Show message if no events */}
-        {events.length === 0 ? (
-          <p>No events yet. Add one!</p>
-        ) : (
-          // Map over events and render an EventCard for each
-          events.map((event) => (
-            <EventCard key={event.id} event={event} onDelete={handleDelete} />
-          ))
-        )}
-      </div>
-    </PageLayout>
+      {!showForm && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-green-500 text-white px-4 py-2 rounded mb-4"
+        >
+          Add New Event
+        </button>
+      )}
+
+      {showForm && (
+        <EventForm
+          event={editingEvent ?? undefined}
+          //@ts-ignore
+          onSubmit={()=> editingEvent ? handleUpdateEvent(editingEvent.id): handleAddEvent(editingEvent)}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingEvent(null);
+          }}
+        />
+      )}
+      <ul className="space-y-2">
+        {events.map(event => (
+          <li
+            key={event.id}
+            className="p-4 border rounded flex justify-between items-center"
+          >
+            <div>
+              <h2 className="font-semibold">{event.title}</h2>
+              <p>{event.date}</p>
+              {event.location && <p>{event.location}</p>}
+              {event.description && <p>{event.description}</p>}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingEvent(event);
+                  setShowForm(true);
+                }}
+                className="bg-yellow-400 px-3 py-1 rounded"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => event.id && handleDeleteEvent(event.id)}
+                className="bg-red-500 text-white px-3 py-1 rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
-}
+};
+
+export default MyEvents;
