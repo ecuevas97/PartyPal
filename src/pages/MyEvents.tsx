@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import EventForm, { EventType } from "../components/EventForm";
 
 const MyEvents: React.FC = () => {
+  // State for events list
   const [events, setEvents] = useState<EventType[]>([]);
+  // Event being edited (or null if adding a new one)
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
+  // Whether to show the form
   const [showForm, setShowForm] = useState(false);
-console.log(events)
-  // Fetch events from API
+
+  // Fetch events from backend
   const fetchEvents = async () => {
     try {
       const res = await fetch("http://localhost:3001/events");
@@ -17,11 +20,13 @@ console.log(events)
     }
   };
 
+  // Run once on mount
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  const handleAddEvent = async (newEvent: EventType | null) => {
+  // Add new event
+  const handleAddEvent = async (newEvent: EventType) => {
     try {
       await fetch("http://localhost:3001/events", {
         method: "POST",
@@ -35,10 +40,11 @@ console.log(events)
     }
   };
 
-  const handleUpdateEvent = async (updatedEvent: EventType | null) => {
-    if (!editingEvent?.id) return;
+  // Update existing event
+  const handleUpdateEvent = async (updatedEvent: EventType) => {
+    if (!updatedEvent.id) return;
     try {
-      await fetch(`http://localhost:3001/events/${editingEvent.id}`, {
+      await fetch(`http://localhost:3001/events/${updatedEvent.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedEvent),
@@ -51,6 +57,7 @@ console.log(events)
     }
   };
 
+  // Delete event
   const handleDeleteEvent = async (id: number) => {
     try {
       await fetch(`http://localhost:3001/events/${id}`, { method: "DELETE" });
@@ -62,55 +69,72 @@ console.log(events)
 
   return (
     <div className="p-4">
+      {/* Page title */}
       <h1 className="text-xl font-bold mb-4">My Events</h1>
 
+      {/* Add button */}
       {!showForm && (
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setEditingEvent(null); // Make sure it's a fresh form
+            setShowForm(true);
+          }}
           className="bg-green-500 text-white px-4 py-2 rounded mb-4"
         >
           Add New Event
         </button>
       )}
 
+      {/* Event form */}
       {showForm && (
         <EventForm
-          event={editingEvent ?? undefined}
-          //@ts-ignore
-          onSubmit={()=> editingEvent ? handleUpdateEvent(editingEvent.id): handleAddEvent(editingEvent)}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingEvent(null);
-          }}
-        />
+  event={editingEvent ?? undefined}
+  onSubmit={async (formData) => {
+    if (editingEvent) {
+      await handleUpdateEvent({ ...formData, id: editingEvent.id });
+    } else {
+      await handleAddEvent(formData);
+    }
+  }}
+  onCancel={() => {
+    setShowForm(false);
+    setEditingEvent(null);
+  }}
+/>
+
       )}
-      <ul className="space-y-2">
-        {events.map(event => (
+
+      {/* Event list */}
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {events.map((event) => (
           <li
             key={event.id}
-            className="p-4 border rounded flex justify-between items-center"
+            className="bg-white shadow-lg rounded-xl p-4 flex flex-col justify-between border border-pink-200"
           >
             <div>
-              <h2 className="font-semibold">{event.title}</h2>
-              <p>{event.date}</p>
-              {event.location && <p>{event.location}</p>}
-              {event.description && <p>{event.description}</p>}
+              <h2 className="text-lg font-bold text-pink-600">🎉 {event.title}</h2>
+              <p className="text-gray-600 mt-1">📅 {event.date}</p>
+              {event.location && <p className="text-gray-600">📍 {event.location}</p>}
+              {event.description && (
+                <p className="mt-2 text-gray-700">{event.description}</p>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex gap-2 mt-4">
               <button
                 onClick={() => {
                   setEditingEvent(event);
                   setShowForm(true);
                 }}
-                className="bg-yellow-400 px-3 py-1 rounded"
+                className="bg-yellow-400 hover:bg-yellow-500 px-3 py-1 rounded text-sm"
               >
-                Edit
+                ✏️ Edit
               </button>
               <button
                 onClick={() => event.id && handleDeleteEvent(event.id)}
-                className="bg-red-500 text-white px-3 py-1 rounded"
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
               >
-                Delete
+                🗑 Delete
               </button>
             </div>
           </li>
