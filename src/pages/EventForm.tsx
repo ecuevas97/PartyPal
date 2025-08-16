@@ -95,7 +95,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
         <div className="flex justify-center gap-6 mt-4">
           <button
             type="submit"
-className="bg-gradient-to-r from-blue-400 to-pink-400 hover:from-blue-500 hover:to-pink-500 text-white px-8 py-3 rounded-full shadow-lg font-bold transition-all text-lg"
+            className="bg-gradient-to-r from-pink-400 to-blue-400 hover:from-pink-500 hover:to-blue-500 text-white px-8 py-3 rounded-full shadow-lg font-bold transition-all text-lg"
           >
             Save
           </button>
